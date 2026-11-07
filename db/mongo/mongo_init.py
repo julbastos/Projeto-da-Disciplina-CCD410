@@ -11,7 +11,7 @@ MEMBERS = ["mongo1:27017", "mongo2:27017", "mongo3:27017"]
 
 client = MongoClient(HOST, directConnection=True, serverSelectionTimeoutMS=10000)
 
-# 1) Inicia o replica set (ignora se já foi iniciado)
+# 1) Inicia o replica set 
 config = {
     "_id": "rs0",
     "members": [{"_id": i, "host": h} for i, h in enumerate(MEMBERS)],
