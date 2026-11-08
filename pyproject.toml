@@ -1,0 +1,31 @@
+[project]
+name = "projeto-da-disciplina-ccd410"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Júlia Bastos", email = "juliabtsbrt2005@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.20.1",
+    "astrapy>=2.3.2",
+    "beanie>=2.2.0",
+    "cassandra-driver>=3.29",
+    "fastapi>=0.162.2",
+    "fastcrud>=0.23.0",
+    "psycopg[binary]>=3.1",
+    "pydantic-settings>=2.16.2",
+    "pymongo>=4.6",
+    "python-dotenv>=1.0",
+    "sqlalchemy>=2.1.8",
+    "sqlmodel>=0.0.48",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+projeto-da-disciplina-ccd410 = "projeto_da_disciplina_ccd410:main"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"

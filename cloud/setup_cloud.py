@@ -54,21 +54,21 @@ def setup_mongo():
     db = client["biblioteca"]
     if "livros" not in db.list_collection_names():
         db.create_collection(
-        "livros",
-        validator={
-            "$jsonSchema": {
-                "bsonType": "object",
-                "required": ["titulo", "autores", "generos"],
-                "properties": {
-                    "titulo": {"bsonType": "string"},
-                    "autores": {"bsonType": "array", "items": {"bsonType": "string"}},
-                    "generos": {"bsonType": "array", "items": {"bsonType": "string"}},
-                    "isbn": {"bsonType": "string"},
-                    "ano": {"bsonType": "int"},
-                },
-            }
-        },
-    )
+            "livros",
+            validator={
+                "$jsonSchema": {
+                    "bsonType": "object",
+                    "required": ["titulo", "autores", "generos"],
+                    "properties": {
+                        "titulo": {"bsonType": "string"},
+                        "autores": {"bsonType": "array", "items": {"bsonType": "string"}},
+                        "generos": {"bsonType": "array", "items": {"bsonType": "string"}},
+                        "isbn": {"bsonType": "string"},
+                        "ano": {"bsonType": "int"},
+                    },
+                }
+            },
+        )
     livros = db.get_collection("livros", write_concern=WriteConcern(w="majority"))
     livros.create_index("isbn", unique=True, sparse=True)
     livros.create_index("generos")
