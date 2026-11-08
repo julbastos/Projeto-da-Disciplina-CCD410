@@ -12,7 +12,6 @@ Uso:
     python cloud/setup_cloud.py
 """
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -43,6 +42,7 @@ def setup_postgres():
     with psycopg.connect(exigir("POSTGRES_URL"), autocommit=True) as conn:
         conn.execute(sql)
         conn.execute(ler_sem_comentarios(ROOT / "db" / "postgres" / "aplicacao.sql"))
+        conn.execute(ler_sem_comentarios(ROOT / "db" / "postgres" / "exclusoes.sql"))
     print("[PostgreSQL] OK: usuarios e estoque criadas.")
 
 # ---------- 2. MongoDB (Atlas) ----------
@@ -74,6 +74,7 @@ def setup_mongo():
     livros.create_index("generos")
     livros.create_index("autores")
     livros.create_index("titulo")
+    client.close()
     print("[MongoDB] OK: coleção livros e índices criados.")
 
 # ---------- 3. Cassandra (Astra DB) ----------
@@ -85,20 +86,23 @@ def setup_cassandra():
     print("[Cassandra] criando tabelas...")
     bundle = ROOT / exigir("ASTRA_BUNDLE_PATH").removeprefix("./")
     keyspace = os.getenv("ASTRA_KEYSPACE", "biblioteca")
+    if not bundle.is_file():
+        raise FileNotFoundError("baixe o arquivo de conexão segura no astra e ajuste ASTRA_BUNDLE_PATH no .env")
 
     cluster = Cluster(
         cloud={"secure_connect_bundle": str(bundle)},
         auth_provider=PlainTextAuthProvider("token", exigir("ASTRA_TOKEN")),
     )
-    session = cluster.connect(keyspace)
-
-    # Executa só os CREATE TABLE. Keyspace e USE já são feitos pelo Astra.
-    texto = ler_sem_comentarios(ROOT / "db" / "cassandra" / "init.cql")
-    for comando in texto.split(";"):
-        comando = comando.strip()
-        if comando.upper().startswith("CREATE TABLE"):
-            session.execute(comando)
-    cluster.shutdown()
+    try:
+        session = cluster.connect(keyspace)
+        # keyspace e conexão já são definidos pelo astra.
+        texto = ler_sem_comentarios(ROOT / "db" / "cassandra" / "init.cql")
+        for comando in texto.split(";"):
+            comando = comando.strip()
+            if comando.upper().startswith("CREATE TABLE"):
+                session.execute(comando)
+    finally:
+        cluster.shutdown()
     print("[Cassandra] OK: tabelas de empréstimos criadas.")
 
 # ---------- main ----------

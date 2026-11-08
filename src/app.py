@@ -13,7 +13,16 @@ async def lifespan(app):
     fechar_conexoes()
 
 
-app = FastAPI(title='biblioteca plural', lifespan=lifespan)
+app = FastAPI(
+    title='biblioteca plural',
+    description='cadastro de leitores e livros e controle de empréstimos.',
+    openapi_tags=[
+        {'name': 'leitores', 'description': 'cadastro de leitores no postgres.'},
+        {'name': 'livros', 'description': 'catálogo no mongodb e estoque no postgres.'},
+        {'name': 'empréstimos', 'description': 'empréstimos, devoluções e histórico no cassandra.'},
+    ],
+    lifespan=lifespan,
+)
 app.include_router(main_router)
 STATIC = Path(__file__).parent / 'static'
 
