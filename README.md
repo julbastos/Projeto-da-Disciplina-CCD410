@@ -22,6 +22,28 @@ graph LR
 
 o backend é uma aplicação python com fastapi. as rotas são agrupadas em leitores, livros e empréstimos. ele recebe requisições http do frontend, valida os dados com pydantic e acessa os bancos com psycopg, pymongo e cassandra-driver. o frontend usa html, css e javascript e é servido pelo próprio backend.
 
+### justificativa pelo teorema cap
+
+o teorema cap trata de três garantias em um sistema distribuído:
+
+- **consistência (c):** uma leitura observa a escrita mais recente ou falha.
+- **disponibilidade (a):** toda requisição recebida por um nó que não falhou consegue ser atendida; responder apenas com erro não conta.
+- **tolerância a partições (p):** o sistema considera falhas de comunicação entre os nós.
+
+durante uma partição de rede, não é possível garantir consistência e disponibilidade ao mesmo tempo. a escolha depende do dado e da operação, conforme a [explicação de cap na documentação do cassandra](https://cassandra.apache.org/doc/stable/cassandra/architecture/guarantees.html).
+
+| banco | relação com cap no projeto |
+| --- | --- |
+| postgres | o estoque precisa de um valor confiável antes de autorizar um empréstimo. se o backend perde acesso ao postgres, ele recusa a operação em vez de continuar com uma cópia local desatualizada. a aplicação prioriza a correção do estoque e aceita ficar indisponível para empréstimos. |
+| mongodb | o catálogo usa documentos e, em um replica set, as escritas passam pelo primário. durante uma eleição, as escritas ficam indisponíveis até haver um novo primário. para priorizar a confirmação das escritas entre réplicas, a url de exemplo usa `w=majority`. essa garantia depende da configuração usada em `MONGO_URL`; o código não impõe esse parâmetro. |
+| cassandra | o histórico pode aceitar atraso nas atualizações. sua arquitetura favorece disponibilidade e tolerância a partições, normalmente descrita como ap. a consistência é ajustável por operação: exigir mais réplicas pode reduzir a disponibilidade. isso combina com consultas de histórico que não decidem se há estoque para um novo empréstimo. |
+
+no mongodb, [escritas por maioria](https://www.mongodb.com/docs/manual/reference/write-concern/) e [eleições de primário](https://www.mongodb.com/docs/manual/core/replica-set-primary/) explicam a perda temporária de disponibilidade. `w=majority` sozinho não garante que toda leitura seja linearizável; as garantias também dependem das opções de leitura. no cassandra, os [níveis de consistência](https://cassandra.apache.org/doc/stable/cassandra/architecture/dynamo.html#tunable-consistency) permitem ajustar quantas réplicas precisam responder.
+
+o postgres não deve ser classificado automaticamente como ca por ser relacional. o projeto não configura sua replicação; essa parte depende do serviço contratado. a documentação do postgres descreve como a [replicação síncrona](https://www.postgresql.org/docs/current/warm-standby.html#SYNCHRONOUS-REPLICATION) pode fazer uma confirmação esperar pelas réplicas. as restrições e a transação usadas aqui são garantias de integridade e atomicidade, não uma prova de consistência no sentido de cap.
+
+na aplicação, o empréstimo pode ser concluído com postgres e mongodb acessíveis mesmo que o cassandra esteja fora do ar. o histórico fica pendente e é atualizado após uma nova tentativa de sincronização. essa é uma decisão de consistência eventual entre bancos, separada da replicação interna de cada banco. ela não significa que o sistema inteiro garante disponibilidade: sem acesso ao postgres, novos empréstimos continuam bloqueados.
+
 ### operações
 
 | recurso | criar | consultar | editar | excluir |
