@@ -118,7 +118,8 @@ com uv, use `uv sync` para instalar as dependências e `uv run python` no lugar 
 ## arquivos
 
 - `src/app.py`: aplicação e arquivos do frontend.
-- `src/router.py`: rotas de leitores, livros e empréstimos.
+- `src/routes/`: routers de leitores, livros e empréstimos.
+- `src/router.py`: reúne os routers no `main_router`, incluído em `src/app.py`.
 - `src/database.py`: conexões com os três bancos.
 - `src/schemas/`: validação dos cadastros.
 - `src/static/`: frontend.

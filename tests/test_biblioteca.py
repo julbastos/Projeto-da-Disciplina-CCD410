@@ -1,11 +1,13 @@
 import sqlite3
 import unittest
 from contextlib import contextmanager
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 from fastapi.testclient import TestClient
 from app import app
-import router
+from routes import emprestimos as router
+from routes import livros as livros_routes
+from routes import usuarios as usuarios_routes
 
 LIVRO = '507f1f77bcf86cd799439011'
 
@@ -55,7 +57,16 @@ class BibliotecaTest(unittest.TestCase):
             with self.db:
                 yield Connection(self.db)
 
-        self.patches = [patch.object(router, 'postgres', postgres), patch.object(router, 'livros'), patch.object(router, 'sincronizar', side_effect=RuntimeError('offline'))]
+        mongo_mock = MagicMock()
+        self.patches = [
+            patch.object(module, 'postgres', postgres)
+            for module in (usuarios_routes, livros_routes, router)
+        ]
+        self.patches.extend([
+            patch.object(router, 'livros', mongo_mock),
+            patch.object(livros_routes, 'livros', mongo_mock),
+            patch.object(router, 'sincronizar', side_effect=RuntimeError('offline')),
+        ])
         for p in self.patches:
             p.start()
         self.client = TestClient(app, raise_server_exceptions=False)
