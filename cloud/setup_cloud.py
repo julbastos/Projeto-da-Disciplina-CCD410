@@ -41,8 +41,8 @@ def setup_postgres():
     print("[PostgreSQL] criando tabelas...")
     sql = ler_sem_comentarios(ROOT / "db" / "postgres" / "init.sql")
     with psycopg.connect(exigir("POSTGRES_URL"), autocommit=True) as conn:
-        conn.execute("DROP TABLE IF EXISTS estoque, usuarios")
         conn.execute(sql)
+        conn.execute(ler_sem_comentarios(ROOT / "db" / "postgres" / "aplicacao.sql"))
     print("[PostgreSQL] OK: usuarios e estoque criadas.")
 
 # ---------- 2. MongoDB (Atlas) ----------
@@ -52,9 +52,8 @@ def setup_mongo():
     print("[MongoDB] criando coleção livros...")
     client = MongoClient(exigir("MONGO_URL"), serverSelectionTimeoutMS=15000)
     db = client["biblioteca"]
-    if "livros" in db.list_collection_names():
-        db.drop_collection("livros")
-    db.create_collection(
+    if "livros" not in db.list_collection_names():
+        db.create_collection(
         "livros",
         validator={
             "$jsonSchema": {
