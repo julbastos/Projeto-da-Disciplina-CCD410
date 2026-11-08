@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     POSTGRES_URL: str
     MONGO_URL: str
     ASTRA_BUNDLE_PATH: str = './secure-connect-biblioteca.zip'
+    ASTRA_BUNDLE_BASE64: str = ''
     ASTRA_TOKEN: str = ''
     ASTRA_KEYSPACE: str = 'biblioteca'
 

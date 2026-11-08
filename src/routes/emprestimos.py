@@ -1,6 +1,6 @@
 from uuid import UUID, uuid1
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Path
 from database import postgres, livros, cassandra
 from schemas.emprestimos import EmprestimoCriar, EmprestimoAtualizar
 from routes.livros import objeto_id
@@ -100,16 +100,24 @@ def sincronizar_historico():
 
 
 @router.get('/historico/usuarios/{usuario_id}')
-def historico_usuario(usuario_id: int):
-    rows = cassandra()[1].execute('SELECT * FROM emprestimos_por_usuario WHERE usuario_id=%s LIMIT 200', (usuario_id,))
-    return [row._asdict() for row in rows]
+def historico_usuario(usuario_id: int = Path(ge=1, le=2147483647)):
+    return consultar_historico('emprestimos_por_usuario', 'usuario_id', usuario_id)
 
 
 @router.get('/historico/livros/{livro_id}')
 def historico_livro(livro_id: str):
-    objeto_id(livro_id)
-    rows = cassandra()[1].execute('SELECT * FROM emprestimos_por_livro WHERE livro_id=%s LIMIT 200', (livro_id,))
-    return [row._asdict() for row in rows]
+    livro_id = str(objeto_id(livro_id))
+    return consultar_historico('emprestimos_por_livro', 'livro_id', livro_id)
+
+
+def consultar_historico(tabela, chave, valor):
+    # tabela e chave são constantes das rotas, nunca entradas do cliente.
+    try:
+        rows = cassandra()[1].execute(f'SELECT * FROM {tabela} WHERE {chave}=%s LIMIT 200', (valor,))
+        # A leitura das páginas do resultado também pode falhar.
+        return [row._asdict() for row in rows]
+    except Exception as exc:
+        raise HTTPException(503, 'histórico indisponível; verifique a conexão e a preparação do cassandra') from exc
 
 
 @router.delete('/emprestimos/{emprestimo_id}')

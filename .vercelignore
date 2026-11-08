@@ -1,0 +1,10 @@
+.env
+.env.*
+.venv
+.git
+.aws
+.agents
+.codex
+secure-connect-*.zip
+tests
+**/__pycache__

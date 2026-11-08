@@ -3,3 +3,6 @@ secure-connect-*.zip
 __pycache__/
 *.pyc
 .venv/
+.vercel/
+.vercel
+.env*

@@ -56,6 +56,8 @@ na edição de um empréstimo, o campo `devolvido` controla a devolução ou rea
 
 o histórico é lido diretamente do cassandra em `get /api/historico/usuarios/{id}` e `get /api/historico/livros/{id}`. a documentação interativa em `/docs` organiza as rotas por recurso e permite testar as consultas. as listagens de livros, empréstimos e histórico retornam até 200 registros.
 
+nas consultas de histórico, o id do leitor deve estar entre 1 e 2147483647, e o id do livro deve ser um ObjectId válido. entradas inválidas retornam 422; uma consulta sem registros retorna `[]`. se a conexão ou leitura do cassandra falhar, a api retorna 503 com a mensagem de histórico indisponível. confira o arquivo indicado em `ASTRA_BUNDLE_PATH`, o token e a preparação das tabelas.
+
 ### atualização entre bancos
 
 a operação de empréstimo é registrada no postgres junto com a mudança no estoque. depois, o backend envia o histórico às duas tabelas do cassandra. se ele estiver indisponível, o registro fica pendente no postgres. o botão **atualizar histórico** tenta novamente. a mesma regra vale para devoluções e exclusões; exclusões pendentes ficam na tabela `emprestimos_excluidos`.
@@ -115,6 +117,38 @@ abra `http://localhost:8000` e cadastre um leitor e um livro com pelo menos um e
 
 com uv, use `uv sync` para instalar as dependências e `uv run python` no lugar de `python`. para atualizar somente o esquema relacional de uma instalação existente, use `PYTHONPATH=src uv run alembic upgrade head` ou execute novamente o script de preparação.
 
+## deploy na vercel
+
+aplicação publicada: https://biblioteca-plural.vercel.app. documentação da api: https://biblioteca-plural.vercel.app/docs.
+
+o projeto inclui `index.py` como entrada do fastapi para a vercel, servindo a api e a interface no mesmo domínio. importe este repositório com a raiz do projeto como **Root Directory** e selecione o framework **FastAPI**. não use comando de inicialização do uvicorn nem execute `cloud/setup_cloud.py` no build: os bancos devem estar preparados antes do deploy.
+
+configure estas variáveis em **Settings → Environment Variables**, nos ambientes em que deseja executar a aplicação:
+
+- `POSTGRES_URL`
+- `MONGO_URL`
+- `ASTRA_TOKEN`
+- `ASTRA_KEYSPACE` (neste projeto, `biblioteca`)
+- `ASTRA_BUNDLE_BASE64` (conteúdo do secure connect bundle codificado em base64)
+
+para gerar o base64 localmente em um arquivo temporário, sem imprimir o segredo no terminal:
+
+```bash
+python - <<'PY'
+import base64
+import os
+from pathlib import Path
+bundle = Path('secure-connect-biblioteca.zip').read_bytes()
+fd = os.open('/tmp/astra-bundle-base64.txt', os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+with os.fdopen(fd, 'w') as output:
+    output.write(base64.b64encode(bundle).decode('ascii'))
+PY
+```
+
+copie o conteúdo desse arquivo para `ASTRA_BUNDLE_BASE64` na vercel e remova o arquivo temporário depois. não versione o zip, o base64 nem o `.env`. o backend reconstrói o zip em `/tmp` durante a conexão e remove o arquivo temporário ao final da tentativa. localmente, `ASTRA_BUNDLE_PATH` continua funcionando quando `ASTRA_BUNDLE_BASE64` está vazio.
+
+após configurar as variáveis, faça o deploy e verifique `/`, `/docs`, `/api/usuarios`, `/api/livros` e as duas rotas de histórico. mudanças em variáveis exigem um novo deploy. os serviços de banco precisam aceitar conexões da vercel; uma conexão que funciona localmente ainda precisa ser validada no ambiente publicado.
+
 ## arquivos
 
 - `src/app.py`: aplicação e arquivos do frontend.
@@ -141,4 +175,4 @@ com uv: `uv run python -m unittest discover -s tests -v`, com `PYTHONPATH=src` d
 
 esta é uma aplicação acadêmica de administração, sem autenticação. execute localmente ou em uma rede de acesso restrito.
 
-na validação anterior, postgres e mongodb conectaram. o cassandra ainda precisa ser validado com o arquivo indicado em `ASTRA_BUNDLE_PATH`, ausente naquele momento. os testes locais não substituem essa verificação com os três serviços.
+na validação do deploy, a interface e as consultas de leitores, livros, empréstimos e histórico por leitor e livro retornaram http 200 na vercel. postgres, mongodb e cassandra responderam. essa verificação fez apenas leituras; os testes automatizados das operações usam substitutos locais dos bancos.
